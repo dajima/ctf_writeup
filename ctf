@@ -1,0 +1,243 @@
+ctf
+
+awd
+通防
+基于ptrace
+基于seccomp
+流量转发
+木马
+二进制比较
+补丁
+patchkit
+lief
+keypatch
+栈
+shellcode
+pwntools shellcode生成
+asm手动写
+pwntools接口，shellcraft
+C写内联汇编
+可打印shellcode
+侧信道shellcode
+seccomp绕过
+简单栈溢出
+ROP
+ret2syscall
+ret2libc
+ret2text
+ret2shellcode
+ret2csu
+ret2reg
+SROP
+ret2_dl_runtime_resolve
+BROP
+ret2VDSO
+技巧
+stack pivoting栈迁移
+frame faking
+Stack smash
+partial overwrite
+canary
+进程启动一次后固定
+子进程和父进程保持一致
+可以爆破
+整数溢出
+堆
+UAF
+off-by-one
+chunk-overlap堆叠
+unlink
+fastbin attack
+unsorted bin attack
+large bin attack
+tcache attack
+tcache_house_of_spirit
+基础知识,malloc,free,realloc
+one_gadgets(参考https://b0ldfrev.gitbook.io/note/miscellaneous/ctf-bi-ji)
+改malloc_hook为one_gadgets,一般malloc触发的方式， one_gadgets由于限制条件不满足，执行都不会成功， 可以考虑free两次造成double free，调用malloc_printerr触发，恰好[esp+0x50]=0(当向非标准IO函数向缓冲流 输出或输入的数据过大时，往往会先预先给数据分配内存。比如printf/scanf-打印/输入字符串过长时会触发malloc)
+在地址上malloc_hook与realloc_hook是相邻的， 在攻击malloc_hook我们没有能够成功执行one_gadgets， 但是我们可以通过将malloc_hook更改为_libc_realloc+0x14, 将realloc_hook更该为one_gadgets。 这样的好处在于， 我们能够控制__malloc_hook指向的代码的内容， 规避掉_libc_realloc中部分指令，从而更改在执行one_gadgets时的占空间， 创建能够成功执行one_gadgets的栈空间。这是一个很巧妙的点
+虽然__free_hook上方几乎是"\x00"，无可用size，但是我们可以先用 unsorted attack 攻击__free_hook上方， 在其上方踩出 size，再去劫持 __free_hook。
+使用tcache stashing attack或unsorted_bin_attack，将_IO_2_1_stdin_->_IO_buf_end改成main_arena+x(我这里是+352)， 从而可以在scanf的时候输入数据到realloc_hook和malloc_hook，改成one_gadget，调节下偏移即可。
+利用house of husk ,覆写__printf_function_table表为heap地址(让其不为空)， 覆写__printf_arginfo_table表为heap地址且heap['s']被覆写为了one_gadget，在调用格式化字符带有%sprintf()函数时，即可get shell。
+写exit函数在ld.so中的_rtld_global._dl_rtld_lock_rescursive 为one_gadget
+当程序开启full relor时，可写libc中puts函数开头的strlen的got表
+system
+栈迁移到.bss段时，若栈上方(低地址处)有大约0x200字节的空白空间，则执行system函数就不会报错；但我们通常使用onegadget获取shell system貌似也有栈的限制
+格式化字符串
+%c %d %p %x %n$ %* %xc作用
+scanf
+printf
+vsprintf
+辅助工具
+https://github.com/hellman/libformatstr
+pwntools
+WIKI小函数
+利用
+修改got
+修改stack
+堆上格式化字符串
+IO_FILE
+<libc2.24
+虚表劫持
+FSOP
+libc2.24
+任意地址读写？
+_IO_strjump
+竞争条件
+proc fs
+/proc/self/mem
+/proc/self/fd
+/proc/self/maps
+linux kernel
+mips
+arm
+调试技巧
+pwntools技巧
+IDA插件
+插件大全
+
+https://www.52pojie.cn/forum.php?mod=viewthread&tid=1016307&extra=page%3D1%26filter%3Dtypeid%26typeid%3D134
+
+LazyIDA 地址复制快捷键
+w 地址复制
+
+c 复制当前项名称
+
+v 删除返回类型
+
+搜索格式化字符串漏洞
+
+https://github.com/L4ys/LazyIDA
+
+AUTORE 自动函数重命名
+https://github.com/a1ext/auto_re
+
+安装比较简单，拷贝py文件
+
+IFL 交互式函数调用关系，类似si
+https://github.com/hasherezade/ida_ifl
+
+findcrypt照着指导安装完了无法使用
+https://github.com/polymorf/findcrypt-yara
+hexrays_hlight 大括号 高亮
+https://www.hex-rays.com/contests_details/contest2016/
+
+Keypatch 补丁插件
+idaref 指令功能说明
+https://github.com/nologic/idaref
+
+照着指导安装即可，
+
+idaref.py -> <ida_path>/plugins/idaref.py
+
+arm.sql -> <ida_path>/plugins/archs/arm.sql
+
+x86-64.sql -> <ida_path>/plugins/archs/x86-64.sql
+
+mips32.sql -> <ida_path>/plugins/archs/mips32.sql
+
+xtensa.sql -> <ida_path>/plugins/archs/xtensa.sql
+
+这些文件按顺序复制，在plugin->idaref star后，窗口会同步指令说明
+
+IDAFuzzy 和idea的find everywhere有点像，搜索命令函数等
+https://github.com/Ga-ryo/IDAFuzzy
+
+安装参考指导，要安装库
+
+HexRaysCodeXplorer 可在RE过程中实现更好的代码导航（神器,按J跳转）
+https://github.com/REhints/HexRaysCodeXplorer
+
+mipsrop 用途如其名，生成Gadget，ida7.0没跑起来 定位了一下，作者github已经更新到7.4版本了，7.0需要回退单个文件后即可 git log mipsrop.py 得到commitid git checkout commitid mipsrop.py即可
+https://github.com/tacnetsol/ida/blob/master/plugins/mipsrop/mipsrop.py
+
+使用参考mips文档
+
+bindiff有写单独总结
+friend插件 主要功能如下： 利用第三方的库(如：Capstone)提高反汇编结果的可读性。 显示指令和寄存器对应的信息。 在外部的浏览器中打开指令或寄存器对应的参考文档。 显示函数的调用总结。 开启和关闭不同的指令及寄存器的提示信息。
+https://github.com/alexhude/FRIEND
+
+需要编译安装，IDA 7.0不知道在哪里找的编译好的
+
+加载xml文件后，指令识别功能需要CPU官方手册，作者项目中给的是在线的，需要下载到本地进行替换
+
+可能需要pip安装 capstone，注意用IDA的python -m Pip的形式
+
+无文件执行ELF
+#include <stdio.h>
+
+#include <stdlib.h>
+
+#include <string.h>
+
+#include <fcntl.h>
+
+#include <unistd.h>
+
+#include <linux/memfd.h>
+
+#include <sys/syscall.h>
+
+#include <errno.h>
+
+int anonyexec(const char *path, char *argv[])
+
+{
+
+int fd, fdm, filesize;
+
+void *elfbuf;
+
+char cmdline[256];
+
+fd = open(path, O_RDONLY);
+
+filesize = lseek(fd, SEEK_SET, SEEK_END);
+
+lseek(fd, SEEK_SET, SEEK_SET);
+
+elfbuf = malloc(filesize);
+
+read(fd, elfbuf, filesize);
+
+close(fd);
+
+fdm = syscall(__NR_memfd_create, "elf", MFD_CLOEXEC);
+
+ftruncate(fdm, filesize);
+
+write(fdm, elfbuf, filesize);
+
+free(elfbuf);
+
+sprintf(cmdline, "/proc/self/fd/%d", fdm);
+
+argv[0] = cmdline;
+
+execve(argv[0], argv, NULL);
+
+free(elfbuf);
+
+return -1;
+
+}
+
+int main()
+
+{
+
+char *argv[] = {"/bin/name", "-a", NULL};
+
+int result =anonyexec("/bin/name", argv);
+
+return result;
+
+}
+
+LD_PRELOAD
+https://b0ldfrev.gitbook.io/note/linux_operating_system/que-shi-de-dong-tai-lian-jie-ku#ldpreload-yu-etcldsopreload
+
+seccomp绕过
+学习技巧
+方法论
+https://rd.readthedocs.io/
